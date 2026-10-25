@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ถ่ายรูปรอยเท้าหรือส้นเท้า วัดมุม Clarke, ดัชนี CSI และมุมส้นเท้า เพื่อคัดกรองภาวะเท้าแบน">
+<meta name="theme-color" content="#2646B5">
+<title>ตรวจองศาเท้าแบน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: tool header → mode/side controls → workbench (photo stage | step guide + readings) → capture guide + criteria */
+:root{
+  --paper:#F1F3F7; --surface:#FFFFFF; --ink:#15203A; --muted:#5A6479; --line:#D8DDE6; --stage:#E2E6ED;
+  --accent:#2646B5; --accent-soft:#E5EAFA; --on-accent:#FFFFFF;
+  --ok:#2B8A3E; --ok-soft:#E2F2E5; --warn:#A86B12; --warn-soft:#FAEFD9; --bad:#C2362B; --bad-soft:#FAE3E0; --hi:#6A3FD4; --hi-soft:#ECE5FB;
+  --f-display:"Anuphan","IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1420; --surface:#161F2F; --ink:#E5EAF3; --muted:#97A2B6; --line:#283347; --stage:#0A0F18;
+  --accent:#7D9DFF; --accent-soft:#1E2B4D; --on-accent:#0E1420;
+  --ok:#5CC274; --ok-soft:#173022; --warn:#E3A748; --warn-soft:#352812; --bad:#F07A6E; --bad-soft:#3A1C1A; --hi:#AE93FF; --hi-soft:#2A2148;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1420; --surface:#161F2F; --ink:#E5EAF3; --muted:#97A2B6; --line:#283347; --stage:#0A0F18;
+  --accent:#7D9DFF; --accent-soft:#1E2B4D; --on-accent:#0E1420;
+  --ok:#5CC274; --ok-soft:#173022; --warn:#E3A748; --warn-soft:#352812; --bad:#F07A6E; --bad-soft:#3A1C1A; --hi:#AE93FF; --hi-soft:#2A2148;
+  color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 56px;display:grid;gap:20px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:clamp(26px,4.4vw,36px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:19px;font-weight:600}
+h3{font-size:15px;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted);max-width:62ch;margin-top:6px}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--muted);padding:7px 13px;border-radius:7px;cursor:pointer;line-height:1.3}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg small{display:block;font-size:11px;opacity:.8}
+
+.btn{font:inherit;font-size:14px;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:9px;cursor:pointer;line-height:1.3;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn svg{width:17px;height:17px;flex:none}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.bench{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:880px){.bench{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.stage-card{padding:12px;display:grid;gap:10px}
+.stage-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stage-bar .spacer{flex:1}
+.stage{position:relative;background:var(--stage);border-radius:10px;display:flex;justify-content:center;align-items:center;min-height:220px;overflow:hidden}
+.stage-inner{position:relative}
+#cv{display:block;touch-action:none;cursor:crosshair;max-width:100%}
+.loupe{position:absolute;width:128px;height:128px;border-radius:50%;border:3px solid #fff;box-shadow:0 6px 22px rgba(0,0,0,.35);pointer-events:none;background:#000}
+.tag{position:absolute;top:10px;left:10px;background:rgba(21,32,58,.86);color:#fff;font-size:12.5px;padding:5px 10px;border-radius:7px;pointer-events:none;max-width:calc(100% - 20px)}
+.hint{font-size:13px;color:var(--muted);text-align:center}
+
+.side{display:grid;gap:16px}
+.steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px}
+.steps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;padding:7px 8px;border-radius:9px;color:var(--muted)}
+.steps .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-mono);font-size:12.5px;font-weight:600;border:1.5px solid var(--line)}
+.steps li.done{color:var(--ink)}
+.steps li.done .n{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.steps li.now{background:var(--accent-soft);color:var(--ink)}
+.steps li.now .n{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.steps b{font-weight:600;display:block;line-height:1.45;padding-top:2px}
+.steps small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.step-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+.verdict{border-radius:10px;padding:11px 14px;font-weight:600;font-family:var(--f-display);font-size:16px}
+.reading{display:grid;gap:8px;padding-top:14px;border-top:1px solid var(--line)}
+.reading:first-of-type{border-top:0;padding-top:0}
+.reading-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.big{font-family:var(--f-mono);font-size:40px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.big span{font-size:20px;color:var(--muted);margin-left:2px}
+.note{font-size:13.5px;color:var(--muted)}
+.pill{display:inline-block;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:99px}
+.t-ok{background:var(--ok-soft);color:var(--ok)}
+.t-warn{background:var(--warn-soft);color:var(--warn)}
+.t-bad{background:var(--bad-soft);color:var(--bad)}
+.t-hi{background:var(--hi-soft);color:var(--hi)}
+.results{display:grid;gap:14px}
+.empty{color:var(--muted);font-size:14px}
+
+.gauge{position:relative;padding:6px 0 18px}
+.track{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px}
+.track i{display:block;height:100%}
+.b-ok{background:var(--ok);opacity:.55}.b-warn{background:var(--warn);opacity:.55}.b-bad{background:var(--bad);opacity:.55}.b-hi{background:var(--hi);opacity:.55}
+.marker{position:absolute;top:0;width:4px;height:22px;margin-left:-2px;background:var(--ink);border-radius:2px;transition:left .15s}
+.ticks span{position:absolute;top:20px;font-family:var(--f-mono);font-size:11px;color:var(--muted);transform:translateX(-50%)}
+
+.saved table{width:100%;border-collapse:collapse;font-size:14px}
+.saved th,.saved td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.saved th{font-weight:500;color:var(--muted);font-size:12.5px}
+.saved td .num{font-size:15px}
+.saved .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.d-ok{background:var(--ok)}.d-warn{background:var(--warn)}.d-bad{background:var(--bad)}.d-hi{background:var(--hi)}
+.saved-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.tbl-wrap{overflow-x:auto}
+
+.ref{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+@media (max-width:880px){.ref{grid-template-columns:minmax(0,1fr)}}
+.ref ol{margin:10px 0 0;padding-left:20px;display:grid;gap:6px}
+.ref ol li{padding-left:4px}
+.crit{width:100%;border-collapse:collapse;font-size:14px;margin-top:10px}
+.crit th,.crit td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+.crit th{font-weight:500;color:var(--muted);font-size:12.5px}
+.crit .grp td{padding-top:14px;font-weight:600;font-family:var(--f-display);border-bottom:1px solid var(--line)}
+.disc{font-size:13.5px;color:var(--muted);border-left:3px solid var(--warn);padding:4px 0 4px 12px;max-width:80ch}
+.err{color:var(--bad);font-size:13.5px}
+@media (prefers-reduced-motion:reduce){.marker{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Flat Foot Screening · Pes planus</div>
+    <h1>ตรวจองศาเท้าแบน</h1>
+    <p class="lede">ถ่ายรูปรอยเท้า หรือรูปส้นเท้าจากด้านหลัง แล้วแตะจุดตามขั้นตอน แอพจะคำนวณมุม Clarke, ดัชนี Chippaux‑Smirak และมุมส้นเท้าให้ทันที</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="วิธีวัด">
+      <button id="m-foot" aria-pressed="true">รอยเท้า<small>มุม Clarke + CSI</small></button>
+      <button id="m-rear" aria-pressed="false">ส้นเท้าด้านหลัง<small>มุมส้นเท้า (RCSP)</small></button>
+    </div>
+    <div class="seg" role="group" aria-label="ข้างที่วัด">
+      <button id="s-L" aria-pressed="false">เท้าซ้าย</button>
+      <button id="s-R" aria-pressed="true">เท้าขวา</button>
+    </div>
+  </div>
+
+  <div class="bench">
+    <section class="card stage-card" aria-label="ภาพสำหรับวัด">
+      <div class="stage-bar">
+        <label class="btn primary" for="cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>ถ่ายรูป</label>
+        <input class="vh" id="cam" type="file" accept="image/*" capture="environment">
+        <label class="btn" for="pick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/></svg>เลือกรูป</label>
+        <input class="vh" id="pick" type="file" accept="image/*">
+        <span class="spacer"></span>
+        <button class="btn" id="rot" title="หมุนภาพ 90°"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 1 1-3-6.2"/><path d="M20 4v5h-5"/></svg>หมุน</button>
+        <button class="btn" id="smp">ดูตัวอย่าง</button>
+      </div>
+      <div class="stage" id="stage">
+        <div class="stage-inner" id="inner">
+          <canvas id="cv"></canvas>
+          <canvas class="loupe" id="loupe" width="128" height="128" hidden></canvas>
+          <div class="tag" id="tag" hidden></div>
+        </div>
+      </div>
+      <p class="err" id="err" hidden></p>
+      <p class="hint">แตะบนภาพเพื่อวางจุดตามลำดับ · ลากจุดเพื่อปรับตำแหน่ง (มีแว่นขยายช่วย)</p>
+    </section>
+
+    <div class="side">
+      <section class="card" aria-label="ขั้นตอนวางจุด">
+        <h2 id="steps-title">วางจุดบนรอยเท้า</h2>
+        <ol class="steps" id="steps"></ol>
+        <div class="step-actions">
+          <button class="btn" id="undo">ย้อนจุดล่าสุด</button>
+          <button class="btn" id="clear">ล้างจุดทั้งหมด</button>
+          <button class="btn" id="nomid" hidden>ไม่มีรอยกลางเท้า</button>
+        </div>
+      </section>
+
+      <section class="card results" aria-label="ผลการวัด" id="results"></section>
+
+      <section class="card saved" aria-label="ผลที่บันทึก">
+        <h2>เทียบเท้าซ้าย–ขวา</h2>
+        <div class="tbl-wrap" id="saved"></div>
+        <div class="saved-foot">
+          <button class="btn primary" id="save">บันทึกผลเท้าขวา</button>
+          <button class="btn" id="wipe">ล้างผลที่บันทึก</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="ref">
+    <section class="card">
+      <h2>วิธีเตรียมภาพ</h2>
+      <h3 style="margin-top:12px">รอยเท้า</h3>
+      <ol>
+        <li>ชุบฝ่าเท้าด้วยน้ำ แป้งฝุ่นผสมน้ำ หรือสีโปสเตอร์ล้างน้ำได้</li>
+        <li>วางกระดาษ A4 สีตัดกับรอยเท้าบนพื้นเรียบ ยืนลงน้ำหนักเต็มเท้าทั้งสองข้าง 2–3 วินาที</li>
+        <li>ยกเท้าขึ้นตรง ๆ แล้วถ่ายจากด้านบน กล้องขนานกับพื้น ให้ปลายเท้าชี้ขึ้นด้านบนของภาพ</li>
+      </ol>
+      <h3 style="margin-top:14px">ส้นเท้าด้านหลัง</h3>
+      <ol>
+        <li>ยืนเท้าเปล่า เท้ากว้างเท่าสะโพก ลงน้ำหนักเท่ากันสองขา มองตรงไปข้างหน้า</li>
+        <li>ถ้าทำได้ ให้คนช่วยใช้ปากกาขีดเส้นกึ่งกลางน่องและกึ่งกลางส้นเท้าก่อนถ่าย</li>
+        <li>ถ่ายจากด้านหลัง ระยะประมาณ 1 เมตร กล้องอยู่ระดับข้อเท้า ไม่เอียง</li>
+      </ol>
+    </section>
+    <section class="card">
+      <h2>เกณฑ์อ่านค่า</h2>
+      <div class="tbl-wrap">
+      <table class="crit">
+        <thead><tr><th>ค่า</th><th>ช่วง</th><th>แปลผล</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="3">มุม Clarke (รอยเท้า)</td></tr>
+          <tr><td></td><td class="num">&lt; 31°</td><td><span class="pill t-bad">เท้าแบน</span></td></tr>
+          <tr><td></td><td class="num">31–45°</td><td><span class="pill t-ok">ปกติ</span></td></tr>
+          <tr><td></td><td class="num">&gt; 45°</td><td><span class="pill t-hi">อุ้งเท้าสูง</span></td></tr>
+          <tr class="grp"><td colspan="3">ดัชนี Chippaux‑Smirak (CSI)</td></tr>
+          <tr><td></td><td class="num">0%</td><td><span class="pill t-hi">อุ้งเท้าสูง</span></td></tr>
+          <tr><td></td><td class="num">0.1–29.9%</td><td><span class="pill t-ok">ปกติ</span></td></tr>
+          <tr><td></td><td class="num">30–39.9%</td><td><span class="pill t-warn">ก้ำกึ่ง</span></td></tr>
+          <tr><td></td><td class="num">40–44.9%</td><td><span class="pill t-bad">อุ้งเท้าต่ำ</span></td></tr>
+          <tr><td></td><td class="num">≥ 45%</td><td><span class="pill t-bad">เท้าแบน</span></td></tr>
+          <tr class="grp"><td colspan="3">มุมส้นเท้าขณะยืน (RCSP)</td></tr>
+          <tr><td></td><td class="num">บิดเข้า &gt; 3°</td><td><span class="pill t-hi">ส้นเท้าบิดเข้าใน</span></td></tr>
+          <tr><td></td><td class="num">−3° ถึง 5°</td><td><span class="pill t-ok">ปกติ</span></td></tr>
+          <tr><td></td><td class="num">บิดออก 5–10°</td><td><span class="pill t-warn">บิดออก</span></td></tr>
+          <tr><td></td><td class="num">บิดออก &gt; 10°</td><td><span class="pill t-bad">บิดออกมาก</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+    </section>
+  </div>
+
+  <p class="disc">ใช้คัดกรองเบื้องต้นเท่านั้น ไม่ใช่การวินิจฉัย ความแม่นยำขึ้นกับคุณภาพรอยเท้าและมุมกล้อง เด็กอายุต่ำกว่าประมาณ 6 ปีมีไขมันใต้อุ้งเท้า รอยเท้าจึงดูแบนได้ตามปกติ ถ้าปวดเท้า ปวดส้นเท้า ปวดเข่า เท้าแบนข้างเดียว หรือเท้าแข็งขยับไม่ได้ ควรพบแพทย์ออร์โธปิดิกส์หรือนักกายภาพบำบัด</p>
+</div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const STEPS={
+  foot:[
+    {t:'ขอบในสุดของปลายเท้า',d:'จุดที่นูนออกด้านในมากที่สุด บริเวณโคนนิ้วโป้ง'},
+    {t:'ขอบในสุดของส้นเท้า',d:'จุดที่นูนออกด้านในมากที่สุดของส้นเท้า'},
+    {t:'จุดเว้าลึกสุดของอุ้งเท้า',d:'บนขอบด้านในของรอยเท้า ระหว่างจุด 1 กับ 2 ถ้าขอบตรงหรือนูนออก ให้แตะบนขอบช่วงกลางเท้า'},
+    {t:'ขอบนอกสุดของปลายเท้า',d:'ฝั่งนิ้วก้อย ตรงช่วงที่ปลายเท้ากว้างที่สุด'},
+    {t:'ขอบในของช่วงกลางเท้าที่แคบที่สุด',d:'ถ้าไม่มีรอยกลางเท้าเลย กดปุ่ม “ไม่มีรอยกลางเท้า”'},
+    {t:'ขอบนอกของช่วงกลางเท้าที่แคบที่สุด',d:'ฝั่งตรงข้ามจุด 5 ในแนวเดียวกัน'}
+  ],
+  rear:[
+    {t:'กึ่งกลางน่อง ด้านบน',d:'ประมาณกลางน่อง ให้อยู่กึ่งกลางความกว้างของขา'},
+    {t:'กึ่งกลางขา เหนือตาตุ่ม',d:'กึ่งกลางระหว่างขอบซ้ายและขวาของขา ใต้น่อง'},
+    {t:'กึ่งกลางส้นเท้า ด้านบน',d:'จุดที่เอ็นร้อยหวายเกาะส้นเท้า'},
+    {t:'กึ่งกลางส้นเท้า ด้านล่าง',d:'กึ่งกลางส้นเท้าใกล้พื้น'}
+  ]
+};
+const state={mode:'foot',side:'R',foot:{img:null,pts:[],sample:true},rear:{img:null,pts:[],sample:true}};
+const cur=()=>state[state.mode], steps=()=>STEPS[state.mode];
+const dpr=Math.min(window.devicePixelRatio||1,2.5);
+const cv=$('#cv'),ctx=cv.getContext('2d'),lp=$('#loupe'),lctx=lp.getContext('2d');
+lp.width=128*dpr;lp.height=128*dpr;lp.style.width='128px';lp.style.height='128px';
+const view={s:1};
+let drag=-1;
+
+/* vector helpers */
+const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y}),add=(a,b)=>({x:a.x+b.x,y:a.y+b.y}),mul=(a,k)=>({x:a.x*k,y:a.y*k});
+const dot=(a,b)=>a.x*b.x+a.y*b.y,cross=(a,b)=>a.x*b.y-a.y*b.x,len=a=>Math.hypot(a.x,a.y);
+const nrm=(a,b)=>{const u=sub(b,a),l=len(u)||1;return{x:-u.y/l,y:u.x/l}};
+const DEG=180/Math.PI;
+
+/* seeded random for sample texture */
+let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+
+function makeFootSample(){
+  const W=560,H=940,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.fillStyle='#F6F5EF';g.fillRect(0,0,W,H);
+  g.strokeStyle='rgba(120,130,150,.12)';g.lineWidth=1;
+  for(let y=40;y<H;y+=40){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke();}
+  const f=document.createElement('canvas');f.width=W;f.height=H;const p=f.getContext('2d');
+  p.fillStyle='#1E2F66';
+  p.beginPath();p.moveTo(300,870);
+  p.bezierCurveTo(375,870,395,800,392,720);
+  p.bezierCurveTo(390,620,375,540,388,450);
+  p.bezierCurveTo(398,380,410,320,395,270);
+  p.bezierCurveTo(375,215,300,200,240,210);
+  p.bezierCurveTo(180,220,150,265,158,320);
+  p.bezierCurveTo(166,380,215,420,255,500);
+  p.bezierCurveTo(275,560,240,640,222,700);
+  p.bezierCurveTo(205,770,225,870,300,870);
+  p.fill();
+  [[208,165,38,44],[273,148,21,24],[315,160,19,22],[352,182,17,19],[386,214,14,16]].forEach(([x,y,rx,ry])=>{p.beginPath();p.ellipse(x,y,rx,ry,0,0,Math.PI*2);p.fill();});
+  p.globalCompositeOperation='destination-out';
+  for(let i=0;i<2600;i++){p.globalAlpha=.25+rnd()*.6;p.beginPath();p.arc(rnd()*W,rnd()*H,.6+rnd()*2.4,0,Math.PI*2);p.fill();}
+  g.globalAlpha=.92;g.drawImage(f,0,0);g.globalAlpha=1;
+  return {img:c,pts:[{x:157,y:318},{x:213,y:765},{x:259,y:528},{x:403,y:335},{x:259,y:528},{x:381,y:528}]};
+}
+function makeRearSample(){
+  const W=560,H=900,c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  g.fillStyle='#E4E7EC';g.fillRect(0,0,W,815);g.fillStyle='#C9CED6';g.fillRect(0,815,W,H-815);
+  g.fillStyle='rgba(0,0,0,.18)';g.beginPath();g.ellipse(312,818,92,10,0,0,Math.PI*2);g.fill();
+  const skin='#C68C66';g.fillStyle=skin;
+  g.beginPath();g.moveTo(180,0);g.bezierCurveTo(160,180,215,380,240,595);g.lineTo(325,595);g.bezierCurveTo(345,380,398,180,382,0);g.closePath();g.fill();
+  g.beginPath();g.arc(238,598,18,0,Math.PI*2);g.arc(328,606,17,0,Math.PI*2);g.fill();
+  g.save();g.translate(302,712);g.rotate(-10*Math.PI/180);g.beginPath();g.ellipse(0,0,63,102,0,0,Math.PI*2);g.fill();g.restore();
+  const sh=g.createLinearGradient(170,0,390,0);sh.addColorStop(0,'rgba(60,30,15,.28)');sh.addColorStop(.45,'rgba(255,255,255,0)');sh.addColorStop(1,'rgba(60,30,15,.3)');
+  g.globalCompositeOperation='source-atop';g.fillStyle=sh;g.fillRect(0,0,W,815);g.globalCompositeOperation='source-over';
+  g.strokeStyle='rgba(90,45,25,.35)';g.lineWidth=5;g.beginPath();g.moveTo(281,430);g.quadraticCurveTo(284,560,292,640);g.stroke();
+  return {img:c,pts:[{x:280,y:140},{x:281,y:560},{x:291,y:650},{x:317,y:806}]};
+}
+function loadSample(mode){
+  const s=mode==='foot'?makeFootSample():makeRearSample();
+  state[mode]={img:s.img,pts:s.pts,sample:true};
+}
+
+/* layout + drawing */
+function layout(){
+  const img=cur().img,stage=$('#stage');
+  const maxW=stage.clientWidth,maxH=Math.max(260,Math.min(window.innerHeight*.72,780));
+  let s=maxW/img.width;if(img.height*s>maxH)s=maxH/img.height;
+  view.s=s;const w=Math.round(img.width*s),h=Math.round(img.height*s);
+  cv.style.width=w+'px';cv.style.height=h+'px';cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+}
+const ORANGE='#FF7A1A',CYAN='#18C3D6';
+function seg(c,a,b,col,u,dash){
+  c.save();c.lineCap='round';
+  c.strokeStyle='rgba(10,14,25,.6)';c.lineWidth=5*u;c.setLineDash(dash?[10*u,7*u]:[]);
+  c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+  c.strokeStyle=col;c.lineWidth=2.6*u;c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();c.restore();
+}
+function label(c,x,y,txt,u,bg){
+  c.save();c.font=`600 ${13*u}px "IBM Plex Mono",ui-monospace,monospace`;
+  const w=c.measureText(txt).width+12*u,h=21*u;
+  c.fillStyle=bg||'rgba(21,32,58,.9)';
+  c.beginPath();c.roundRect?c.roundRect(x-w/2,y-h/2,w,h,5*u):c.rect(x-w/2,y-h/2,w,h);c.fill();
+  c.fillStyle='#fff';c.textAlign='center';c.textBaseline='middle';c.fillText(txt,x,y+.5*u);c.restore();
+}
+function wedge(c,o,a1,a2,r,u){
+  let d=a2-a1;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+  c.save();c.fillStyle='rgba(255,122,26,.25)';c.beginPath();c.moveTo(o.x,o.y);c.arc(o.x,o.y,r,a1,a1+d,d<0);c.closePath();c.fill();
+  c.strokeStyle=ORANGE;c.lineWidth=2*u;c.beginPath();c.arc(o.x,o.y,r,a1,a1+d,d<0);c.stroke();c.restore();
+  return a1+d/2;
+}
+function drawPoints(c,u){
+  const pts=cur().pts,n=steps().length;
+  pts.forEach((p,i)=>{
+    c.save();c.beginPath();c.arc(p.x,p.y,9*u,0,Math.PI*2);c.fillStyle='#fff';c.fill();
+    c.lineWidth=2.6*u;c.strokeStyle=(state.mode==='foot'&&i>=3)?CYAN:ORANGE;c.stroke();
+    c.fillStyle='#15203A';c.font=`700 ${10.5*u}px "IBM Plex Mono",ui-monospace,monospace`;c.textAlign='center';c.textBaseline='middle';c.fillText(String(i+1),p.x,p.y+.5*u);c.restore();
+  });
+}
+function drawFoot(c,u){
+  const [M,H,A,F,W1,W2]=cur().pts;const m=footMetrics();
+  if(M&&H){const d=sub(H,M);seg(c,add(M,mul(d,-.12)),add(H,mul(d,.06)),ORANGE,u,true);}
+  if(M&&A){const d=sub(A,M);seg(c,M,add(M,mul(d,1.35)),ORANGE,u);}
+  if(M&&H&&A&&m.clarke!=null){
+    const uu=sub(H,M),vv=sub(A,M),r=Math.min(len(uu),len(vv))*.42;
+    const mid=wedge(c,M,Math.atan2(uu.y,uu.x),Math.atan2(vv.y,vv.x),r,u);
+    const lx=M.x+Math.cos(mid)*(r+30*u),ly=M.y+Math.sin(mid)*(r+30*u);
+    label(c,lx,ly,m.clarke.toFixed(1)+'°',u);
+  }
+  if(M&&H&&F){const n=nrm(M,H),d=dot(sub(F,M),n);seg(c,sub(F,mul(n,d)),F,CYAN,u);}
+  if(M&&H&&W1&&W2){const n=nrm(M,H),d=dot(sub(W2,W1),n);if(Math.abs(d)>.5)seg(c,W1,add(W1,mul(n,d)),CYAN,u);}
+  if(m.csi!=null&&W1&&W2){label(c,(W1.x+W2.x)/2,Math.max(W1.y,W2.y)+26*u,'CSI '+m.csi.toFixed(0)+'%',u,'rgba(8,90,105,.92)');}
+}
+function drawRear(c,u){
+  const [A,B,C,D]=cur().pts;
+  if(A&&B){const d=sub(B,A);seg(c,add(A,mul(d,-.2)),add(B,mul(d,.15)),ORANGE,u,true);}
+  if(C&&D){const d=sub(D,C);seg(c,add(C,mul(d,-.35)),add(D,mul(d,.25)),ORANGE,u);}
+  if(A&&B&&C&&D){
+    const lg=sub(B,A),l=len(lg)||1,hd=sub(D,C),r=len(hd);
+    const ref=add(C,mul(lg,r/l));seg(c,C,ref,CYAN,u,true);
+    const mid=wedge(c,C,Math.atan2(lg.y,lg.x),Math.atan2(hd.y,hd.x),r*.7,u);
+    const v=rearAngle();
+    label(c,C.x+Math.cos(mid)*(r*.7+34*u)+ (Math.cos(mid)>0?14*u:-14*u),C.y+Math.sin(mid)*(r*.7),(v>0?'+':'')+v.toFixed(1)+'°',u);
+  }
+}
+function drawOverlay(c,u){state.mode==='foot'?drawFoot(c,u):drawRear(c,u);drawPoints(c,u);}
+function render(){
+  const st=cur();
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.setTransform(dpr*view.s,0,0,dpr*view.s,0,0);ctx.drawImage(st.img,0,0);
+  drawOverlay(ctx,1/view.s);
+}
+function loupe(p,cx,cy){
+  const z=view.s*2.6;lp.hidden=false;
+  let top=cy-150;if(top<-20)top=cy+34;
+  lp.style.left=(cx-64)+'px';lp.style.top=top+'px';
+  lctx.setTransform(1,0,0,1,0,0);lctx.fillStyle='#000';lctx.fillRect(0,0,lp.width,lp.height);
+  lctx.setTransform(dpr*z,0,0,dpr*z,dpr*64-dpr*z*p.x,dpr*64-dpr*z*p.y);
+  lctx.drawImage(cur().img,0,0);drawOverlay(lctx,1/z);
+  lctx.setTransform(dpr,0,0,dpr,0,0);lctx.strokeStyle='rgba(255,255,255,.9)';lctx.lineWidth=1;
+  lctx.beginPath();lctx.moveTo(64,50);lctx.lineTo(64,78);lctx.moveTo(50,64);lctx.lineTo(78,64);lctx.stroke();
+}
+
+/* metrics */
+function footMetrics(){
+  const [M,H,A,F,W1,W2]=cur().pts,r={};
+  if(M&&H&&A){
+    const u=sub(H,M),v=sub(A,M);
+    if(len(u)>1&&len(v)>1){
+      let a=Math.acos(Math.max(-1,Math.min(1,dot(u,v)/(len(u)*len(v)))))*DEG;
+      if(F){const s1=Math.sign(cross(u,v)),s2=Math.sign(cross(u,sub(F,M)));if(s1&&s2&&s1!==s2)a=-a;}
+      r.clarke=a;
+    }
+  }
+  if(M&&H&&F&&W1&&W2){const n=nrm(M,H),fw=Math.abs(dot(sub(F,M),n)),mw=Math.abs(dot(sub(W2,W1),n));if(fw>1)r.csi=Math.min(150,mw/fw*100);}
+  return r;
+}
+function rearAngle(){
+  const [A,B,C,D]=cur().pts;if(!(A&&B&&C&&D))return null;
+  const ang=(p,q)=>Math.atan2(q.x-p.x,q.y-p.y)*DEG;
+  const diff=ang(C,D)-ang(A,B);
+  const side=cur().sample?'R':state.side;
+  return side==='R'?diff:-diff;
+}
+function cClarke(a){
+  if(a<31)return{tone:'bad',label:'เข้าข่ายเท้าแบน',note:a<=0?'ขอบด้านในของรอยเท้าตรงหรือโค้งนูนออก แทบไม่เห็นอุ้งเท้า':'อุ้งเท้าด้านในเว้าน้อยกว่าเกณฑ์ปกติ (ต่ำกว่า 31°)'};
+  if(a<=45)return{tone:'ok',label:'อุ้งเท้าปกติ',note:'มุมอยู่ในช่วงปกติ 31–45°'};
+  return{tone:'hi',label:'อุ้งเท้าสูง',note:'มุมเกิน 45° อุ้งเท้าโค้งสูงกว่าปกติ (Pes cavus)'};
+}
+function cCSI(c){
+  if(c<=.05)return{tone:'hi',label:'อุ้งเท้าสูง',note:'ไม่มีรอยกลางเท้าสัมผัสพื้นเลย'};
+  if(c<30)return{tone:'ok',label:'ปกติ',note:'ช่วงกลางเท้ากว้างไม่ถึง 30% ของความกว้างปลายเท้า'};
+  if(c<40)return{tone:'warn',label:'ก้ำกึ่ง',note:'กลางเท้ากว้าง 30–39.9% ของปลายเท้า อุ้งเท้าเริ่มต่ำ'};
+  if(c<45)return{tone:'bad',label:'อุ้งเท้าต่ำ',note:'กลางเท้ากว้าง 40–44.9% ของปลายเท้า'};
+  return{tone:'bad',label:'เท้าแบน',note:'กลางเท้ากว้างตั้งแต่ 45% ของปลายเท้าขึ้นไป'};
+}
+function cRear(v){
+  if(v<-3)return{tone:'hi',label:'ส้นเท้าบิดเข้าใน',note:'ส้นเท้าเอียงเข้าด้านในเกิน 3° (Varus)'};
+  if(v<=5)return{tone:'ok',label:'แนวส้นเท้าปกติ',note:'ส้นเท้าเอียงอยู่ในช่วง −3° ถึง 5°'};
+  if(v<=10)return{tone:'warn',label:'ส้นเท้าบิดออก',note:'เอียงออก 5–10° (Valgus) มักพบร่วมกับเท้าแบนแบบยืดหยุ่น'};
+  return{tone:'bad',label:'ส้นเท้าบิดออกมาก',note:'เอียงออกเกิน 10° ควรให้ผู้เชี่ยวชาญตรวจเพิ่มเติม'};
+}
+function gauge(min,max,bands,val){
+  const pct=v=>(Math.max(min,Math.min(max,v))-min)/(max-min)*100;
+  let prev=min,ticks='';
+  const tr=bands.map(b=>{const w=b.to-prev;const html=`<i class="b-${b.tone}" style="flex:${w}"></i>`;if(b.to<max)ticks+=`<span style="left:${pct(b.to)}%">${b.to}</span>`;prev=b.to;return html;}).join('');
+  return `<div class="gauge" aria-hidden="true"><div class="track">${tr}</div><div class="marker" style="left:${pct(val)}%"></div><div class="ticks">${ticks}</div></div>`;
+}
+function reading(title,val,unit,cls,g){
+  return `<div class="reading"><div class="reading-head"><span class="eyebrow">${title}</span><span class="pill t-${cls.tone}">${cls.label}</span></div>
+  <div class="big">${val}<span>${unit}</span></div>${g}<p class="note">${cls.note}</p></div>`;
+}
+
+/* UI render */
+function renderSteps(){
+  const n=cur().pts.length,ss=steps();
+  $('#steps-title').textContent=state.mode==='foot'?'วางจุดบนรอยเท้า':'วางจุดบนขาและส้นเท้า';
+  $('#steps').innerHTML=ss.map((s,i)=>{const cls=i<n?'done':i===n?'now':'todo';
+    return `<li class="${cls}"><span class="n">${i+1}</span><div><b>${s.t}</b>${i===n?`<small>${s.d}</small>`:''}</div></li>`;}).join('')
+    +(n>=ss.length?`<li class="done"><span class="n">✓</span><div><b>ครบทุกจุดแล้ว</b><small>ลากจุดบนภาพเพื่อปรับให้ตรงขอบมากขึ้นได้</small></div></li>`:'');
+  $('#undo').disabled=!n;$('#clear').disabled=!n;
+  $('#nomid').hidden=!(state.mode==='foot'&&n===4);
+}
+function verdictFoot(m){
+  const {clarke:a,csi:c}=m;
+  const flatA=a<31,flatC=c>=40,hiA=a>45,hiC=c<=.05;
+  if(flatA&&flatC)return['bad','ทั้งสองค่าเข้าข่ายเท้าแบน'];
+  if(flatA||flatC)return['warn','ผลก้ำกึ่ง มีหนึ่งค่าเข้าข่ายเท้าแบน'];
+  if(hiA||hiC)return['hi','อุ้งเท้าสูงกว่าปกติ'];
+  if(c>=30)return['warn','อุ้งเท้าค่อนข้างปกติ แต่เริ่มต่ำ'];
+  return['ok','อุ้งเท้าอยู่ในเกณฑ์ปกติ'];
+}
+function renderResults(){
+  const st=cur(),el=$('#results');let h='';
+  const who=st.sample?'ภาพตัวอย่าง · เท้าขวา':(state.side==='L'?'เท้าซ้าย':'เท้าขวา');
+  if(state.mode==='foot'){
+    const m=footMetrics();
+    if(m.clarke!=null&&m.csi!=null){const [t,txt]=verdictFoot(m);h+=`<div class="verdict t-${t}">${txt}</div>`;}
+    h+=`<div class="eyebrow">ผลการวัด · ${who}</div>`;
+    if(m.clarke!=null)h+=reading('มุม Clarke',m.clarke.toFixed(1),'°',cClarke(m.clarke),gauge(0,60,[{to:31,tone:'bad'},{to:45,tone:'ok'},{to:60,tone:'hi'}],m.clarke));
+    else h+=`<p class="empty">วางจุด 1–3 ให้ครบเพื่อดูมุม Clarke</p>`;
+    if(m.csi!=null)h+=reading('ดัชนี Chippaux‑Smirak',m.csi.toFixed(1),'%',cCSI(m.csi),gauge(0,80,[{to:30,tone:'ok'},{to:40,tone:'warn'},{to:45,tone:'bad'},{to:80,tone:'bad'}],m.csi));
+    else if(m.clarke!=null)h+=`<p class="empty">วางจุด 4–6 ต่อ เพื่อคำนวณดัชนี CSI</p>`;
+  }else{
+    const v=rearAngle();
+    h+=`<div class="eyebrow">ผลการวัด · ${who}</div>`;
+    if(v!=null){const cl=cRear(v);h=`<div class="verdict t-${cl.tone}">${cl.label}</div>`+h;
+      h+=reading('มุมส้นเท้า (+ = บิดออก)',(v>0?'+':'')+v.toFixed(1),'°',cl,gauge(-10,20,[{to:-3,tone:'hi'},{to:5,tone:'ok'},{to:10,tone:'warn'},{to:20,tone:'bad'}],v));
+      if(!st.sample)h+=`<p class="note">เลือกข้างเท้าให้ตรงกับภาพ (ตอนนี้: ${state.side==='L'?'ซ้าย':'ขวา'}) เพราะทิศบิดเข้า/ออกกลับกันระหว่างสองข้าง</p>`;
+    }else h+=`<p class="empty">วางจุดให้ครบ 4 จุดเพื่อดูมุมส้นเท้า</p>`;
+  }
+  el.innerHTML=h;
+  const done=st.pts.length>=steps().length;
+  const sb=$('#save');sb.textContent='บันทึกผล'+(state.side==='L'?'เท้าซ้าย':'เท้าขวา');
+  sb.disabled=!done||st.sample;sb.title=st.sample?'ถ่ายหรือเลือกรูปของคุณก่อนบันทึก':'';
+}
+const KEY='flatfoot-results-v1';
+function loadSaved(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}}
+function storeSaved(o){try{localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+let saved=loadSaved();
+function cell(v,unit,cls){return v==null?'<span class="note">—</span>':`<span class="dot d-${cls.tone}"></span><span class="num">${v}${unit}</span><br><span class="note">${cls.label}</span>`;}
+function renderSaved(){
+  const rows=['L','R'].map(s=>{const r=saved[s]||{},f=r.foot,b=r.rear;
+    return `<tr><th scope="row">${s==='L'?'ซ้าย':'ขวา'}</th>
+    <td>${f?cell(f.clarke.toFixed(1),'°',cClarke(f.clarke)):cell(null)}</td>
+    <td>${f?cell(f.csi.toFixed(1),'%',cCSI(f.csi)):cell(null)}</td>
+    <td>${b?cell((b.v>0?'+':'')+b.v.toFixed(1),'°',cRear(b.v)):cell(null)}</td></tr>`;}).join('');
+  $('#saved').innerHTML=`<table><thead><tr><th></th><th>Clarke</th><th>CSI</th><th>ส้นเท้า</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const any=['L','R'].some(s=>saved[s]&&(saved[s].foot||saved[s].rear));$('#wipe').disabled=!any;
+}
+function renderTag(){
+  const t=$('#tag');t.hidden=!cur().sample;
+  t.textContent='ภาพตัวอย่าง (เท้าขวา) · กด “ถ่ายรูป” เพื่อวัดของคุณ';
+}
+function full(){layout();render();renderSteps();renderResults();renderTag();renderSaved();
+  $('#m-foot').setAttribute('aria-pressed',state.mode==='foot');$('#m-rear').setAttribute('aria-pressed',state.mode==='rear');
+  $('#s-L').setAttribute('aria-pressed',state.side==='L');$('#s-R').setAttribute('aria-pressed',state.side==='R');
+  $('#smp').disabled=cur().sample;}
+function soft(){render();renderSteps();renderResults();}
+
+/* pointer */
+function pos(e){const r=cv.getBoundingClientRect();return{cx:e.clientX-r.left,cy:e.clientY-r.top}}
+function toImg(cx,cy){const im=cur().img;return{x:Math.max(0,Math.min(im.width,cx/view.s)),y:Math.max(0,Math.min(im.height,cy/view.s))}}
+cv.addEventListener('pointerdown',e=>{
+  const {cx,cy}=pos(e),pts=cur().pts;let best=-1,bd=24;
+  pts.forEach((p,i)=>{const d=Math.hypot(p.x*view.s-cx,p.y*view.s-cy);if(d<=bd){bd=d;best=i;}});
+  if(best<0){if(pts.length>=steps().length)return;pts.push(toImg(cx,cy));best=pts.length-1;}
+  drag=best;cv.setPointerCapture(e.pointerId);e.preventDefault();soft();loupe(pts[drag],cx,cy);
+});
+cv.addEventListener('pointermove',e=>{if(drag<0)return;const {cx,cy}=pos(e);cur().pts[drag]=toImg(cx,cy);soft();loupe(cur().pts[drag],cx,cy);});
+const end=()=>{if(drag<0)return;drag=-1;lp.hidden=true;soft();};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+
+/* files */
+function fileIn(ev){
+  const f=ev.target.files&&ev.target.files[0];ev.target.value='';if(!f)return;
+  const url=URL.createObjectURL(f),im=new Image();
+  im.onload=()=>{const mx=1800,k=Math.min(1,mx/Math.max(im.naturalWidth,im.naturalHeight));
+    const c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*k);c.height=Math.round(im.naturalHeight*k);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);
+    state[state.mode]={img:c,pts:[],sample:false};$('#err').hidden=true;full();};
+  im.onerror=()=>{URL.revokeObjectURL(url);const e=$('#err');e.textContent='เปิดไฟล์นี้ไม่ได้ ลองใช้ไฟล์ JPG หรือ PNG';e.hidden=false;};
+  im.src=url;
+}
+$('#cam').addEventListener('change',fileIn);$('#pick').addEventListener('change',fileIn);
+$('#rot').addEventListener('click',()=>{
+  const st=cur(),o=st.img,c=document.createElement('canvas');c.width=o.height;c.height=o.width;
+  const g=c.getContext('2d');g.translate(c.width,0);g.rotate(Math.PI/2);g.drawImage(o,0,0);
+  st.pts=st.pts.map(p=>({x:o.height-p.y,y:p.x}));st.img=c;full();
+});
+$('#smp').addEventListener('click',()=>{loadSample(state.mode);full();});
+$('#undo').addEventListener('click',()=>{cur().pts.pop();soft();});
+$('#clear').addEventListener('click',()=>{cur().pts=[];soft();});
+$('#nomid').addEventListener('click',()=>{const p=cur().pts;if(p.length===4&&p[2]){p.push({...p[2]},{...p[2]});soft();}});
+$('#m-foot').addEventListener('click',()=>{state.mode='foot';full();});
+$('#m-rear').addEventListener('click',()=>{state.mode='rear';full();});
+$('#s-L').addEventListener('click',()=>{state.side='L';full();});
+$('#s-R').addEventListener('click',()=>{state.side='R';full();});
+$('#save').addEventListener('click',()=>{
+  const st=cur();if(st.sample)return;const s=state.side;saved[s]=saved[s]||{};
+  if(state.mode==='foot'){const m=footMetrics();if(m.clarke==null||m.csi==null)return;saved[s].foot={clarke:m.clarke,csi:m.csi,t:Date.now()};}
+  else{const v=rearAngle();if(v==null)return;saved[s].rear={v,t:Date.now()};}
+  storeSaved(saved);renderSaved();const b=$('#save'),old=b.textContent;b.textContent='บันทึกแล้ว';setTimeout(()=>b.textContent=old,1400);
+});
+let wipeArm=false;
+$('#wipe').addEventListener('click',()=>{const b=$('#wipe');
+  if(!wipeArm){wipeArm=true;b.textContent='แตะอีกครั้งเพื่อยืนยัน';setTimeout(()=>{wipeArm=false;b.textContent='ล้างผลที่บันทึก';},2500);return;}
+  wipeArm=false;b.textContent='ล้างผลที่บันทึก';saved={};storeSaved(saved);renderSaved();});
+let rt;window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{layout();render();},120);});
+
+loadSample('foot');loadSample('rear');full();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>render());
+})();
+</script>
+
+</body>
+</html>
